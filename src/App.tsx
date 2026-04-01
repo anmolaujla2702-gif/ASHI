@@ -254,8 +254,10 @@ const ServiceCard = ({ icon: Icon, title, description, delay, tag }: { icon: any
 const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -303,6 +305,23 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const handleSignIn = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      console.error("Auth Error:", error);
+      if (error.code === 'auth/unauthorized-domain') {
+        setAuthError(`Domain Not Authorized: Please add ${window.location.hostname} to your Firebase Console > Authentication > Settings > Authorized domains.`);
+      } else {
+        setAuthError(error.message || "Failed to sign in. Please try again.");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="fixed inset-0 z-[100] bg-brand-black flex items-center justify-center p-6">
@@ -312,11 +331,26 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
           </div>
           <h2 className="text-3xl font-black mb-4 text-brand-white">Admin Access</h2>
           <p className="text-gray-400 mb-8">Please sign in with your authorized Google account to access the dashboard.</p>
+          
+          {authError && (
+            <div className="mb-6 p-4 bg-brand-red/10 border border-brand-red/20 rounded-2xl text-brand-red text-sm font-medium">
+              {authError}
+            </div>
+          )}
+
           <button 
-            onClick={signInWithGoogle}
-            className="w-full py-4 bg-brand-gold text-black font-bold rounded-2xl hover:bg-brand-red hover:text-white transition-all flex items-center justify-center gap-3"
+            onClick={handleSignIn}
+            disabled={authLoading}
+            className={cn(
+              "w-full py-4 bg-brand-gold text-black font-bold rounded-2xl hover:bg-brand-red hover:text-white transition-all flex items-center justify-center gap-3",
+              authLoading && "opacity-50 cursor-not-allowed"
+            )}
           >
-            Sign in with Google
+            {authLoading ? (
+              <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Sign in with Google"
+            )}
           </button>
           <button onClick={onClose} className="mt-6 text-sm font-bold text-gray-500 uppercase tracking-widest hover:text-brand-white transition-colors">
             Back to Website
