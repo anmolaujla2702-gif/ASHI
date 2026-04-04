@@ -78,3 +78,23 @@ export const submitContactForm = async (data: any) => {
     handleFirestoreError(error, OperationType.CREATE, path);
   }
 };
+
+export const logBooking = async (eventData: any) => {
+  const path = 'submissions';
+  try {
+    const submissionsRef = collection(db, path);
+    await addDoc(submissionsRef, {
+      name: "Calendly Booking",
+      email: "Check Calendly Dashboard",
+      phone: "N/A",
+      clinicType: "Booking",
+      message: `A new meeting has been scheduled via Calendly. Event: ${eventData.event_type?.name || '20 Min Call'}`,
+      countryCode: "",
+      createdAt: serverTimestamp(),
+      isBooking: true
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error logging booking:", error);
+  }
+};

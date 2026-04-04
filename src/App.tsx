@@ -25,7 +25,8 @@ import {
   ExternalLink,
   Database,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Clock
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cn } from "@/src/lib/utils";
@@ -34,6 +35,7 @@ import {
   auth, 
   signInWithGoogle, 
   submitContactForm,
+  logBooking,
   handleFirestoreError,
   OperationType
 } from "@/src/firebase";
@@ -168,14 +170,14 @@ interface Submission extends ContactFormData {
 
 // --- Components ---
 
-const Navbar = ({ onAdminClick, user }: { onAdminClick: () => void, user: User | null }) => {
+const Navbar = ({ onAdminClick, onBookClick, user }: { onAdminClick: () => void, onBookClick: () => void, user: User | null }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-brand-black/80 backdrop-blur-md border-b border-brand-gray">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <span className="text-2xl font-black tracking-tighter text-brand-white">ASHI</span>
             <div className="h-1.5 w-1.5 bg-brand-gold rounded-full mt-3" />
           </div>
@@ -190,6 +192,12 @@ const Navbar = ({ onAdminClick, user }: { onAdminClick: () => void, user: User |
           <a href="#services" className="text-[13px] font-bold uppercase tracking-widest text-brand-white hover:text-brand-gold transition-colors">Services</a>
           <a href="#about" className="text-[13px] font-bold uppercase tracking-widest text-brand-white hover:text-brand-gold transition-colors">About</a>
           <a href="#contact" className="text-[13px] font-bold uppercase tracking-widest text-brand-white hover:text-brand-gold transition-colors">Contact</a>
+          <button 
+            onClick={onBookClick}
+            className="px-6 py-2 bg-brand-gold text-black text-[11px] font-black uppercase tracking-widest hover:bg-brand-red hover:text-white transition-all rounded-full"
+          >
+            Book a Call
+          </button>
           <button 
             onClick={onAdminClick}
             className="p-2 text-gray-500 hover:text-brand-white transition-all"
@@ -216,6 +224,12 @@ const Navbar = ({ onAdminClick, user }: { onAdminClick: () => void, user: User |
             <a href="#services" onClick={() => setIsOpen(false)} className="text-sm font-bold uppercase tracking-widest text-brand-white hover:text-brand-gold">Services</a>
             <a href="#about" onClick={() => setIsOpen(false)} className="text-sm font-bold uppercase tracking-widest text-brand-white hover:text-brand-gold">About</a>
             <a href="#contact" onClick={() => setIsOpen(false)} className="text-sm font-bold uppercase tracking-widest text-brand-white hover:text-brand-gold">Contact</a>
+            <button 
+              onClick={() => { onBookClick(); setIsOpen(false); }}
+              className="w-full py-4 bg-brand-gold text-black text-sm font-black uppercase tracking-widest hover:bg-brand-red hover:text-white transition-all rounded-full"
+            >
+              Book a Call
+            </button>
             <div className="pt-6 border-t border-brand-gray flex flex-col gap-4">
               <a href="tel:+919877392623" className="text-sm font-bold text-brand-gold">+91 98773 92623</a>
               <a href="mailto:ashypyi@gmail.com" className="text-sm font-bold text-brand-gold">ashypyi@gmail.com</a>
@@ -250,6 +264,94 @@ const ServiceCard = ({ icon: Icon, title, description, delay, tag }: { icon: any
     </div>
   </motion.div>
 );
+
+const BookingPage = ({ onClose }: { onClose: () => void }) => {
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://assets.calendly.com/assets/external/widget.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    // Backend integration: Listen for Calendly events
+    const handleCalendlyEvent = (e: MessageEvent) => {
+      if (e.data.event && e.data.event.indexOf('calendly') === 0) {
+        if (e.data.event === 'calendly.event_scheduled') {
+          console.log("Event Scheduled:", e.data.payload);
+          logBooking(e.data.payload);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleCalendlyEvent);
+
+    return () => {
+      document.body.removeChild(script);
+      window.removeEventListener('message', handleCalendlyEvent);
+    };
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-brand-black flex flex-col overflow-y-auto"
+    >
+      <header className="h-20 bg-brand-black/80 backdrop-blur-md border-b border-brand-gray px-8 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-4">
+          <span className="text-2xl font-black tracking-tighter uppercase">Book a Free Call</span>
+          <span className="px-3 py-1 bg-brand-gold text-black text-[10px] font-black uppercase tracking-widest rounded-full">20 MINS</span>
+        </div>
+        <button onClick={onClose} className="p-2 bg-brand-gold text-black rounded-full hover:bg-brand-red hover:text-white transition-all">
+          <X size={20} />
+        </button>
+      </header>
+
+      <main className="flex-1 p-6 md:p-12">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-4">
+              Let's <span className="text-brand-gold">Connect.</span>
+            </h1>
+            <p className="text-gray-400 text-xl font-medium max-w-2xl mx-auto">
+              Select a time that works for you. We'll discuss your clinic's growth and how we can help you retain more patients.
+            </p>
+          </div>
+
+          <div className="bg-brand-gray rounded-[3rem] border border-brand-gray overflow-hidden shadow-2xl">
+            <div 
+              className="calendly-inline-widget" 
+              data-url="https://calendly.com/anmolaujla2702/new-meeting?hide_event_type_details=1&hide_gdpr_banner=1" 
+              style={{ minWidth: '320px', height: '700px' }} 
+            />
+          </div>
+          
+          <div className="mt-12 grid md:grid-cols-3 gap-8">
+            <div className="p-8 bg-brand-gray/50 rounded-3xl border border-brand-gray">
+              <Clock className="text-brand-gold mb-4" size={24} />
+              <h4 className="text-sm font-black uppercase tracking-widest mb-2">20 Minutes</h4>
+              <p className="text-xs text-gray-500">Quick discovery call to understand your needs.</p>
+            </div>
+            <div className="p-8 bg-brand-gray/50 rounded-3xl border border-brand-gray">
+              <Zap className="text-brand-gold mb-4" size={24} />
+              <h4 className="text-sm font-black uppercase tracking-widest mb-2">Strategy First</h4>
+              <p className="text-xs text-gray-500">No fluff, just a clear roadmap for your growth.</p>
+            </div>
+            <div className="p-8 bg-brand-gray/50 rounded-3xl border border-brand-gray">
+              <CheckCircle2 className="text-brand-gold mb-4" size={24} />
+              <h4 className="text-sm font-black uppercase tracking-widest mb-2">Expert Advice</h4>
+              <p className="text-xs text-gray-500">Direct conversation with our healthcare marketing experts.</p>
+            </div>
+          </div>
+        </div>
+      </main>
+      
+      <footer className="py-12 text-center text-gray-600 text-[10px] font-black uppercase tracking-[0.3em]">
+        © {new Date().getFullYear()} ASHI AGENCY • ALL RIGHTS RESERVED
+      </footer>
+    </motion.div>
+  );
+};
 
 const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -488,6 +590,7 @@ export default function App() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ContactFormData>();
   const [submitted, setSubmitted] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
   const [user, setUser] = useState<User | null>(auth.currentUser);
 
   useEffect(() => {
@@ -524,10 +627,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-black text-brand-white font-sans selection:bg-brand-gold selection:text-black">
-      <Navbar onAdminClick={() => setShowAdmin(true)} user={user} />
+      <Navbar 
+        onAdminClick={() => setShowAdmin(true)} 
+        onBookClick={() => setShowBooking(true)}
+        user={user} 
+      />
 
       <AnimatePresence>
         {showAdmin && <AdminDashboard onClose={() => setShowAdmin(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBooking && <BookingPage onClose={() => setShowBooking(false)} />}
       </AnimatePresence>
 
       {/* Hero Section */}
@@ -548,12 +659,19 @@ export default function App() {
               <p className="text-2xl text-gray-400 max-w-2xl leading-tight font-medium">
                 From small local clinics to large corporations, we help <span className="text-brand-gold">Dermatologists</span>, <span className="text-brand-gold">Dentists</span>, and <span className="text-brand-gold">Gynecologists</span> retain their patients through bespoke digital strategies.
               </p>
-              <div className="shrink-0">
-                <a 
-                  href="#contact" 
+              <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+                <button 
+                  onClick={() => setShowBooking(true)}
                   className="px-12 py-6 bg-brand-gold text-black text-sm font-bold uppercase tracking-widest hover:bg-brand-red hover:text-white transition-all flex items-center gap-4 group rounded-full"
                 >
-                  Get More Customers
+                  Book a Call
+                  <Calendar size={20} className="group-hover:scale-110 transition-transform" />
+                </button>
+                <a 
+                  href="#contact" 
+                  className="px-12 py-6 border border-brand-gray text-brand-white text-sm font-bold uppercase tracking-widest hover:bg-brand-gray transition-all flex items-center gap-4 group rounded-full"
+                >
+                  Get in Touch
                   <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </a>
               </div>
@@ -777,13 +895,13 @@ export default function App() {
               <p className="text-xl text-gray-400 font-medium mb-12 leading-relaxed">
                 Stop settling for vanity metrics. Let's build a strategy that actually turns visitors into loyal patients. No fluff, just growth.
               </p>
-              <a 
-                href="#contact" 
+              <button 
+                onClick={() => setShowBooking(true)}
                 className="inline-flex items-center gap-4 px-12 py-6 bg-brand-gold text-black text-sm font-black uppercase tracking-widest hover:bg-brand-red hover:text-white transition-all rounded-full group"
               >
-                Get Started Now
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-              </a>
+                Book Your Strategy Call
+                <Calendar size={20} className="group-hover:scale-110 transition-transform" />
+              </button>
             </div>
           </motion.div>
         </div>
