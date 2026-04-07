@@ -598,6 +598,12 @@ export default function App() {
       setUser(currentUser);
     });
 
+    // Handle direct booking link (?book=true or #book)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('book') === 'true' || window.location.hash === '#book') {
+      setShowBooking(true);
+    }
+
     // Test Firestore connection
     const testConnection = async () => {
       try {
@@ -940,7 +946,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-brand-gray p-12 md:p-16 rounded-[3rem] border border-brand-gray">
+            <div className="bg-brand-gray p-6 md:p-16 rounded-[2rem] md:rounded-[3rem] border border-brand-gray">
               {submitted ? (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -973,11 +979,11 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                     <div className="space-y-3">
                       <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1">Phone Number</label>
-                      <div className="flex gap-3">
-                        <div className="relative w-32 shrink-0">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative w-full sm:w-32 shrink-0">
                           <select 
                             {...register("countryCode", { required: true })}
                             className="w-full px-4 py-5 bg-brand-black border border-brand-gray rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-gold/5 focus:border-brand-gold transition-all font-bold text-xs appearance-none text-brand-white"
